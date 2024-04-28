@@ -1,0 +1,4 @@
+.env
+sessions/facebook-cookies.json
+.pytest_cache
+__pycache__
