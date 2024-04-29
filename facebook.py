@@ -4,6 +4,7 @@ from string import printable
 from requests import get
 from typing import List, Literal
 from interfaces import ISource
+import jscode 
 from os import getenv, mkdir, path
 from shutil import rmtree
 import json
@@ -33,17 +34,34 @@ class FacebookFetch:
         self.get_content_post(source)
         return
 
-    def get_date_post(self, index) -> str:
-        list_date = self.page.locator("//div[@data-mcomponent='MContainer' and @data-type='vscroller' and @class='m']/div[@data-mcomponent='MContainer' and @data-type='container' and @class='m bg-s3 displayed']/div[@data-mcomponent='MContainer' and @data-type='container' and @class='m']/div[@data-mcomponent='MContainer' and @data-type='container' and @class='m' and @data-actual-height='43']//span[@class='f5']").all()
-        date = list_date[index].inner_text()
-        return date
-
-    def download_image(self, src, source: ISource, index) -> None:
+    def download_image(self, src, source: ISource, index) -> str:
         with open(f"D:/python/download_data/image/{source['username']}/image({index}).jpg", "wb") as f:
             f.write(get(src).content)
             self.page.wait_for_timeout(3000)
+            return f"image({index}).jpg"
     
-    def download_content(self, content, source:ISource) -> None: 
+    def download_video(self, src, source:ISource, index) -> str:
+            print("\t[*] Downloading video")
+            self.context.new_page()
+            self.context.pages[1].goto("https://fdownloader.net/en")
+            input = self.context.pages[1].get_by_placeholder("Enter the Facebook video link here")
+            input.wait_for()
+            input.fill(src)
+            btn_download_1 = self.context.pages[1].locator("//button[@class='btn-red']")
+            btn_download_1.wait_for()
+            btn_download_1.click()
+            self.context.pages[1].wait_for_timeout(5000)
+            btn_download_2 = self.context.pages[1].locator("//a[@class='button is-success is-small download-link-fb']").first
+            btn_download_2.wait_for()
+            href  = btn_download_2.get_attribute('href')
+            if href:
+                request.urlretrieve(href, f"D:/python/download_data/video/{source['username']}/video({index}).mp4")
+            self.context.pages[1].wait_for_timeout(3000)
+            self.context.pages[1].close()   
+            print("\t[*] Video was downloaded inside download folder")
+            return f"video({index}).mp4"
+    
+    def download_post_data(self, content, source:ISource) -> None: 
         with open(f"D:/python/download_data/content/{source['username']}/content.json", "a", encoding='utf8') as f:
             json.dump(content, f,  ensure_ascii=False)
             f.write(",")
@@ -51,56 +69,112 @@ class FacebookFetch:
     def get_content_post(self, source: ISource) -> None:
         mkdir(f"D:/python/download_data/content/{source['username']}")
         mkdir(f"D:/python/download_data/image/{source['username']}")
+        mkdir(f"D:/python/download_data/video/{source['username']}")
 
         with open(f"D:/python/download_data/content/{source['username']}/content.json", "a") as f:
             f.write("[")
+
+        data_post = {
+            "date": " ",
+            "engagement": " ",
+            "content": " ",
+            "image": [""],
+            "video": [""]
+        }
+        
+        count = 0
 
         self.scroll(source)
 
         list_container = self.get_all_container()
 
         for single_container in list_container:
-            index_container = list_container.index(single_container)
+            if count == 3:
+                self.download_post_data(data_post, source)
+                count = 0
+                data_post = {
+                    "date": " ",
+                    "engagement": " ",
+                    "content": " ",
+                    "image": [""],
+                    "video": [""]
+                }
 
-            js_code = f"document.evaluate(\"//div[@data-mcomponent='MContainer' and @data-type='vscroller']/div[{index_container}]//div[@data-mcomponent='ImageArea']/img[@class='img contain' and @data-type='image']\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue"
-            image_element = single_container.evaluate(js_code)
-            if image_element is not None:
-                js_code = f"document.evaluate(\"//div[@data-mcomponent='MContainer' and @data-type='vscroller']/div[{index_container}]//div[@data-mcomponent='ImageArea']/img[@class='img contain' and @data-type='image']\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.getAttribute('src')"
+            index_container = list_container.index(single_container) + 1
+
+            #check whether element has image or not
+            js_code = jscode.getImageElement(index_container)
+            image_element = single_container.evaluate(js_code) #return array image element
+            if len(image_element) != 0:
+                js_code = jscode.getAttributeElement(index_container, 'src', 'image')
                 src_image = single_container.evaluate(js_code)
-                #print(src_image)
-                self.download_image(src_image, source, index_container)
+                for src in src_image:
+                    #print(index_container, ": ", src, "\n")
+                    self.download_image(src, source, index_container)
 
-            if single_container.text_content().find("See translation") == -1:
-                box = single_container.bounding_box()
-                self.page.evaluate(f'document.documentElement.scrollTop+={box["height"]}')
-                continue
+            #check whether element has video or not
+            js_code = jscode.getVideoElement(index_container)
+            video_element = single_container.evaluate(js_code)
+            if len(video_element) != 0:
+                js_code = jscode.getAttributeElement(index_container, 'data-video-id', 'video')
+                id_video = single_container.evaluate(js_code) #id_video is id video array
+                for id in id_video:
+                    src_video = "https://www.facebook.com/video.php/?video_id=" + id
+                    # print(index_container, ": ", src_video, "\n")
+                    self.download_video(src_video, source, index_container)
+                
 
-            #print("Date: ", self.get_date_post(index_container-1), "\n")
+            # scrape text content
+            js_code = jscode.getContentElement(index_container)
+            content_element = self.page.evaluate(js_code)
+            if content_element is not None:
+                if single_container.text_content().find("See more") != -1: 
+                    post = single_container.locator("//div[@role='link']")
+                    post.click(timeout=60000)
+                    self.page.wait_for_timeout(2000)
+                    data_post["content"] = post.text_content()
+                    #print("content: ", post.text_content())
+                    count += 1
+                else:
+                    data_post["content"] = single_container.text_content()
+                    count += 1
+                    #print("content: ", single_container.text_content())
 
-            if single_container.text_content().find("See more") != -1: 
-                post = single_container.get_by_role("link")
-                post.click(timeout=60000)
-                self.page.wait_for_timeout(2000)
-                self.download_content(post.text_content(), source)
-                #print(post.text_content(), "\n")
-            else:
-                self.download_content(single_container.text_content(), source)
-                #print(single_container.text_content(), "\n") 
+            #scrap post's date
+            date = ""
+            js_code = jscode.getDateElement(index_container)
+            date_element = single_container.evaluate(js_code)
+            if date_element:
+                js_code = jscode.getAttributeElement(index_container, '', 'date')
+                date = single_container.evaluate(js_code)
+                # print(date, "\n")
+                data_post["date"] = date
+                count += 1
             
+            #scrap like, commnent, share number
+            post_engagement = ""
+            if single_container.get_attribute("class") == "m displayed":
+                    post_engagement = single_container.text_content()
+                    # print(post_engagement, "\n")
+                    data_post["engagement"] = post_engagement
+                    count += 1
+
+            #scroll 
             box = single_container.bounding_box()
-            self.page.evaluate(f'document.documentElement.scrollTop+={box["height"]}')
+            if box is not None:
+                self.page.evaluate(f'document.documentElement.scrollTop+={box["height"]}')
         
         with open(f"D:/python/download_data/content/{source['username']}/content.json", "a") as f:
+            f.write("{ }")
             f.write("]")
 
     def get_all_container(self) -> List[Locator]:
-        return self.page.locator("//div[@data-mcomponent='MContainer' and @data-type='vscroller']/div[@data-mcomponent='MContainer' and @data-type='container']").all()
-        #return self.page.locator("//div[@data-mcomponent='MContainer' and @data-type='vscroller' and @class='m']/div[@data-mcomponent='MContainer' and @data-type='container' and @class='m bg-s3 displayed']/div[@data-mcomponent='MContainer' and @data-type='container' and @class='m']/div[@data-mcomponent='MContainer' and @data-type='container' and @class='m' and @role='link']").all()
+        return self.page.locator("//div[@data-mcomponent='MContainer' and @data-type='vscroller']/div").all()
 
     def scroll(self, source: ISource) -> None:
         self.page.goto(f"https://m.facebook.com/{source['username']}")
         print("[DEBUG] scrolling ...")
-        for _ in range(10):
+        for _ in range(int(getenv("FETCH_TOTAL_SCROLL"))):
             self.page.evaluate("window.scrollTo(0,document.body.scrollHeight)")
             self.page.wait_for_timeout(2000)
 
