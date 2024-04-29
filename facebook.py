@@ -1,15 +1,13 @@
-from playwright.sync_api import sync_playwright, ElementHandle, Locator
+from playwright.sync_api import sync_playwright, Locator
 from urllib import request
-from string import printable
 from requests import get
 from typing import List, Literal
 from interfaces import ISource
 import jscode 
 from os import getenv, mkdir, path
-from shutil import rmtree
 import json
 from dotenv import load_dotenv
-load_dotenv()  # take environment variables from .env
+load_dotenv() 
 
 
 class FacebookFetch:
