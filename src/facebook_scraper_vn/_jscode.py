@@ -23,6 +23,6 @@ def getDateElement(index_container) -> str:
     return js_code
 
 def getContentElement(index_container) -> str:
-    js_code = f"document.evaluate(\"//div[@data-mcomponent='MContainer' and @data-type='vscroller']/div[{index_container}]/div[@class='m']/div[@role='link' and @class='m']/div[@data-mcomponent='TextArea' and @data-type='text']\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue"
+    js_code = f"document.evaluate(\"//div[@data-mcomponent='MContainer' and @data-type='vscroller']/div[{index_container}]/div[@class='m']/div[@class='m']/div[@data-mcomponent='TextArea' and @data-type='text']\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue"
     return js_code
     

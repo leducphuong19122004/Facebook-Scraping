@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "facebook_scraper_vn"
+version = "0.0.1"
+authors = [
+  { name="Le Duc Phuong", email="phuongtroc2004@gmail.com" },
+]
+description = "Scraping facebook page tool"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+keywords = ["facebook", "scrape", "crawl", "page"]
+dependencies = ["playwright >= 1.43.0", "urllib3 >= 2.2.1", "requests >= 2.31.0", "pathlib >= 1.0.1"]
+
+[project.urls]
+Homepage = "https://github.com/leducphuong19122004/Facebook-Scraping"

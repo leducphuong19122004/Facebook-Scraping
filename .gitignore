@@ -1,4 +1,3 @@
-.env
-sessions/facebook-cookies.json
-.pytest_cache
-__pycache__
+dist
+*.egg-info
+

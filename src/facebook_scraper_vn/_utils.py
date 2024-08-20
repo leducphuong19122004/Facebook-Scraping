@@ -11,3 +11,4 @@ def formatDateString(string) -> str:
     pattern = r'[^\w\s]'
     cleaned_string = re.sub(pattern, '', string)
     return cleaned_string
+
